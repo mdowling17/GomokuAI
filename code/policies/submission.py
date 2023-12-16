@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import gomoku as gm
 
 """
 Implement your AI here
@@ -18,7 +19,14 @@ class Node:
         self.total_value = 0
         self.children = None
         # self.score_ema = 0. # exponential moving average
-
+    
+    def __str__(self):
+        """
+        Return string representation of this state
+        """
+        # return the current node's state as a string and the first 3 children's states as strings
+        return "\n\n".join([str(self.state), *[str(child.state) for child in self.get_children()[:3]]])
+    
     def get_children(self):
         valid_actions = self.state.valid_actions()
         if self.children is None and len(valid_actions) != 0:
@@ -135,3 +143,61 @@ class Submission:
         action = mcts(state, self.num_rollouts)
         ### Replace with your implementation
         return action
+
+if __name__ == "__main__":
+    state = gm.GomokuState.blank(15, 5)
+
+    # ===================================
+    # === Unit Test for Node.__init__ ===
+    # ===================================
+    node = Node(None)
+
+    # Check that the node has the correct properties
+    assert node.state is None
+    assert node.parent is None
+    assert node.total_value == 0
+    assert node.total_visits == 0
+    assert node.children == None
+
+    # ========================================
+    # === Unit Tests for Node.get_children ===
+    # ========================================
+
+    node = Node(state)
+    children = node.get_children()
+    assert len(children) == 225
+
+    last_child = children[-1]
+    first_child = children[0]
+
+    assert last_child.state.board[2,-1,-1] == state.perform((14,14)).board[2,-1,-1]
+    assert first_child.state.board[2,0,0] == state.perform((0,0)).board[2,0,0]
+
+
+    max_win_state = state.play_seq([(0,0), (0,1), (1,0), (1,1), (2,0), (2,1), (3,0), (3,1), (4,0)])
+
+    winning_node = Node(max_win_state)
+    assert winning_node.state.is_game_over() == True
+    assert winning_node.state.current_score() == 1 + 15**2 - 9
+    assert winning_node.get_children() == None
+    
+    # ====================================
+    # === Unit Test for Node.is_leaf() ===
+    # ====================================
+    state = gm.GomokuState.blank(15, 5)
+    node = Node(state)
+    
+    assert node.children is None
+    assert node.is_leaf() == True
+    assert node.children is None
+
+    node.get_children()
+
+    assert node.is_leaf() == False
+    assert node.children is not None
+
+    # ====================================
+    # === Unit Test for Node. ===
+    # ====================================
+
+    print("✅ no fails")
