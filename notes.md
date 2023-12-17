@@ -51,3 +51,32 @@ Considerations:
 
 ## considerations
 * during the rollout (simulation) phase I need to make a copy so that rolled out children are not included in the tree.
+
+
+## possible ideas
+* add a max depth to MCTS > 4
+* during rollout, prune early wins and losses
+* detect 3 in a row with 2 empties
+
+
+
+
+check if it's 0XXX0
+
+0XX0X0
+0X0XX0
+
+    if p == 0: # horizontal
+        return r, c + np.argwhere(state.board[gm.EMPTY, r, c:c+state.win_size])
+    if p == 1: # vertical
+        return r + np.argwhere(state.board[gm.EMPTY, r:r+state.win_size, c]), c
+    if p == 2: # diagonal
+        rng = np.arange(state.win_size)
+        offset = np.argwhere(state.board[gm.EMPTY, r + rng, c + rng])
+        return r + offset, c + offset
+    if p == 3: # antidiagonal
+        rng = np.arange(state.win_size)
+        offset = np.argwhere(state.board[gm.EMPTY, r - rng, c + rng])
+        return r - offset, c + offset
+    # None indicates no empty found
+    return None
