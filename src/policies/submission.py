@@ -28,7 +28,7 @@ class Node:
 
         self.total_visits = 0
         self.total_value = 0
-        self.children = None
+        self.children = []
         # self.score_ema = 0. # exponential moving average
     
     def __str__(self):
@@ -39,16 +39,10 @@ class Node:
         return "\n\n".join([str(self.state), *[str(child.state) for child in self.get_children()[:3]]])
     
     def get_children(self):
-        valid_actions = self.state.valid_actions()
-        if self.children is None and len(valid_actions) != 0:
-            self.children = [
-                Node(self.state.perform(action), parent=self)
-                for action in valid_actions
-            ]
         return self.children
 
-    def is_leaf(self):
-        return self.children is None
+    def is_selectable(self):
+        return len(self.get_children()) != len(self.state.valid_actions())
 
     def select(self):
         # select child with max UCT
@@ -73,9 +67,13 @@ class Node:
         return children[np.argmax(UCT)]
 
     def expand(self):
-        # add all valid actions as children and return a random child
-        children = self.get_children()
-        child = children[np.random.randint(len(children))]
+        # pick a random valid action and append it to the children of the current node
+        # return a copy of the child node's state
+        valid_actions = self.state.valid_actions()
+        random_action = valid_actions[np.random.randint(len(valid_actions))]
+        child_state = self.state.perform(random_action)
+        child = Node(child_state, parent=self)
+        self.children.append(child)
         copy = child.state.copy()
         return copy
 
@@ -109,9 +107,10 @@ def mcts(state, num_rollouts=NUM_ROLLOUTS):
         selected_node = root
 
         # selection
-        while not selected_node.is_leaf():
+        while not selected_node.is_selectable():
             selected_node = selected_node.select()
 
+        assert selected_node.is_selectable()
         # expansion and simulation
         score = 0.0
         if selected_node.state.is_game_over():
@@ -143,8 +142,6 @@ class Submission:
         return action
 
 if __name__ == "__main__":
-    state = gm.GomokuState.blank(15, 5)
-
     # ===================================
     # === Unit Test for Node.__init__ ===
     # ===================================
@@ -155,45 +152,38 @@ if __name__ == "__main__":
     assert node.parent is None
     assert node.total_value == 0
     assert node.total_visits == 0
-    assert node.children == None
+    assert node.children == []
 
     # ========================================
     # === Unit Tests for Node.get_children ===
     # ========================================
+    state = gm.GomokuState.blank(15, 5)
 
     node = Node(state)
     children = node.get_children()
-    assert len(children) == 225
-
-    last_child = children[-1]
-    first_child = children[0]
-
-    assert last_child.state.board[2,-1,-1] == state.perform((14,14)).board[2,-1,-1]
-    assert first_child.state.board[2,0,0] == state.perform((0,0)).board[2,0,0]
-
+    assert len(children) == 0
 
     max_win_state = state.play_seq([(0,0), (0,1), (1,0), (1,1), (2,0), (2,1), (3,0), (3,1), (4,0)])
 
     winning_node = Node(max_win_state)
     assert winning_node.state.is_game_over() == True
     assert winning_node.state.current_score() == 1 + 15**2 - 9
-    assert winning_node.get_children() == None
+    assert winning_node.get_children() == []
     
     # ====================================
     # === Unit Test for Node.is_leaf() ===
     # ====================================
     state = gm.GomokuState.blank(15, 5)
-    node = Node(state)
-    
-    assert node.children is None
-    assert node.is_leaf() == True
-    assert node.children is None
+    state2 = state.perform((0,0))
+    root = Node(state)
+    node2 = Node(state2, parent=root)
 
-    node.get_children()
+    assert root.children == []
+    assert root.is_selectable() == True
 
-    assert node.is_leaf() == False
-    assert node.children is not None
-
+    root.children.append(node2)
+    assert root.is_leaf() == False
+    assert node2.is_selectable() == True
     # ====================================
     # === Unit Test for Node. ===
     # ====================================
