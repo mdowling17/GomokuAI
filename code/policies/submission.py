@@ -7,8 +7,19 @@ Implement your AI here
 Do not change the API signatures for __init__ or __call__
 __call__ must return a valid action
 """
-NUM_ROLLOUTS = 100
+NUM_ROLLOUTS = 1000
 UCT_EXPLORATION_FACTOR = math.sqrt(2)
+
+def rollout(state):
+    # randomly select a child and perform a rollout from that node
+    # return the score of the rollout
+    if state.is_game_over():
+        return state.current_score()
+    else:
+        valid_actions = state.valid_actions()
+        random_action = valid_actions[np.random.randint(len(valid_actions))]
+        return rollout(state.perform(random_action))
+        
 
 class Node:
     def __init__(self, state, parent=None):
@@ -65,18 +76,8 @@ class Node:
         # add all valid actions as children and return a random child
         children = self.get_children()
         child = children[np.random.randint(len(children))]
-        copy = child.copy()
+        copy = child.state.copy()
         return copy
-
-    def rollout(self):
-        # randomly select a child and perform a rollout from that node
-        # return the score of the rollout
-        if self.state.is_game_over():
-            return self.state.current_score()
-        else:
-            children = self.get_children()
-            child = children[np.random.randint(len(children))]
-            return child.rollout()
 
     def backpropagate(self, score):
         # update total visits and total value of all nodes in the path from the leaf node to the root node
@@ -94,7 +95,7 @@ class Node:
         return copy
 
 
-def mcts(state, num_rollouts):
+def mcts(state, num_rollouts=NUM_ROLLOUTS):
     """
     Monte Carlo Tree Search
     Selection: perform tree search, selecting the child node with max UCT at each branch until you reach a leaf node.
@@ -105,7 +106,6 @@ def mcts(state, num_rollouts):
     """
     root = Node(state)
     for i in range(num_rollouts):
-        print(f"Rollout {i}")
         selected_node = root
 
         # selection
@@ -117,12 +117,11 @@ def mcts(state, num_rollouts):
         if selected_node.state.is_game_over():
             score = selected_node.state.current_score()
         else:
-            random_child = selected_node.expand() # adds children to selected_node and returns a copy of a random child
-            score = random_child.rollout() # return the terminal score of the rollout
+            random_child_state = selected_node.expand() # adds children to selected_node and returns a copy of a random child
+            score = rollout(random_child_state) # return the terminal score of the rollout
         
         # backpropagation
         selected_node.backpropagate(score)
-        print(f"Score: {score}, root visits: {root.total_visits}")
 
     # return the action with the highest visit count
     children = root.get_children()
@@ -134,13 +133,12 @@ def mcts(state, num_rollouts):
 
 
 class Submission:
-    def __init__(self, board_size, win_size, num_rollouts=NUM_ROLLOUTS):
-        self.num_rollouts = num_rollouts
+    def __init__(self, board_size, win_size):
         ### Add any additional initiation code here
         pass
 
     def __call__(self, state):
-        action = mcts(state, self.num_rollouts)
+        action = mcts(state)
         ### Replace with your implementation
         return action
 

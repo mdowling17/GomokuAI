@@ -1,5 +1,5 @@
 from policies.human import Human
-from policies.random import Random
+from policies.random2 import Random
 from policies.minimax import Minimax
 from policies.submission import Submission
 
