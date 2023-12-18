@@ -54,8 +54,8 @@ if __name__ == "__main__":
     if args.win_size > args.board_size:
         raise ValueError(f"Win size ({args.win_size}) should be no more than board size ({args.board_size})")
 
-    if args.max_player is None: args.max_player = "Human"
-    if args.min_player is None: args.min_player = "Human"
+    if args.max_player is None: args.max_player = "Minimax"
+    if args.min_player is None: args.min_player = "Submission"
 
     all_policies = {cls.__name__: cls for cls in policy_classes}
 

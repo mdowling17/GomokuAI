@@ -59,10 +59,10 @@ def find_empty(state, p, r, c):
     # None indicates no empty found
     return None
 
-def get_position_list(l, r, base):
+def get_position_list(lhs, rhs, base):
     base = np.array(base, dtype=int)
-    l -= 1
-    r = len(base) - r
+    l = lhs - 1
+    r = len(base) - rhs
     while l >= 0:
       if base[l] != 1: break
       l -= 1
@@ -73,7 +73,7 @@ def get_position_list(l, r, base):
 
     slice = base[l:r+1]
     inverted_list = np.array([bit ^ 1 for bit in slice], dtype=int)
-    return inverted_list
+    return inverted_list, lhs-l
 
 def find_winning_patterns(state, p, r, c):
     if p == 0: # horizontal
@@ -82,7 +82,7 @@ def find_winning_patterns(state, p, r, c):
         base = state.board[gm.EMPTY, r, min_c:max_c+1]
         lhs = c-min_c
         rhs  = max_c-(c+state.win_size-1)
-        position = get_position_list(lhs, rhs, base)
+        position, lhs = get_position_list(lhs, rhs, base)
         lookup_val = lookup(position)
         if lookup_val is None: return None
         index = (lookup_val - lhs)+c
@@ -93,43 +93,56 @@ def find_winning_patterns(state, p, r, c):
         base = state.board[gm.EMPTY, min_r:max_r+1, c]
         lhs = r-min_r
         rhs  = max_r-(r+state.win_size-1)
-        position = get_position_list(lhs, rhs, base)
+        position, lhs = get_position_list(lhs, rhs, base)
         lookup_val = lookup(position)
         if lookup_val is None: return None
         index = (lookup_val - lhs)+r
         return index, c
     if p == 2: # diagonal
-        min_r = max(0, r-2)
-        max_r = min(state.board.shape[1]-1, r+state.win_size+1)
-        min_c = max(0, c-2)
-        max_c = min(state.board.shape[2]-1, c+state.win_size+1)
+        min_r = max(0, r-min(2, c))
+        min_c = max(0, c-min(2, r))
+        max_r = min(state.board.shape[1]-1, r+min(state.win_size+1, state.board.shape[2]-(c+state.win_size-1)-1))
+        max_c = min(state.board.shape[2]-1, c+min(state.win_size+1, state.board.shape[1]-(r+state.win_size-1)-1))
         max_len = min(max_r-min_r, max_c-min_c) + 1
         rng = np.arange(max_len)
         base = state.board[gm.EMPTY, min_r + rng, min_c + rng]
         lhs = min(r-min_r, c-min_c)
         rhs = min(max_r-(r+state.win_size-1), max_c-(c+state.win_size-1))
-        position = get_position_list(lhs, rhs, base)
+        position, lhs = get_position_list(lhs, rhs, base)
         lookup_val = lookup(position)
         if lookup_val is None: return None
         updated_r = (lookup_val - lhs) + r
         updated_c = (lookup_val - lhs) + c
         return updated_r, updated_c
     if p == 3: # anti-diagonal
-        min_r = max(0, r-(state.win_size+1))
-        max_r = min(state.board.shape[1]-1, r+2)
-        min_c = max(0, c-2)
-        max_c = min(state.board.shape[2]-1, c+state.win_size+1)
+        min_r = max(0, r-(state.win_size-1)-min(2, state.board.shape[2]-(c+state.win_size-1)-1))
+        min_c = max(0, c-min(2, state.board.shape[1]-r-1))
+        max_r = min(state.board.shape[1]-1, r+min(2, c))
+        max_c = min(state.board.shape[2]-1, c+state.win_size-1+min(2, r-(state.win_size-1)))
         max_len = min(max_r-min_r, max_c-min_c) + 1
         rng = np.arange(max_len)
         base = state.board[gm.EMPTY, max_r - rng, min_c + rng]
         lhs = min(max_r-r, c-min_c)
         rhs = min((r-state.win_size+1)-min_r, max_c-(c+state.win_size-1))
-        position = get_position_list(lhs, rhs, base)
+        position, lhs = get_position_list(lhs, rhs, base)
         lookup_val = lookup(position)
         if lookup_val is None: return None
         updated_r = r - (lookup_val - lhs)
         updated_c = (lookup_val - lhs) + c
         return updated_r, updated_c
+
+def opponent_wins_in_one(state):
+    player = state.current_player()
+    opponent = gm.MIN if player == gm.MAX else gm.MAX
+    corr = state.corr
+    # check if opponent is one move away to a win
+    idx = np.argwhere((corr[:, gm.EMPTY] == 1) & (corr[:, opponent] == state.win_size-1))
+    if idx.shape[0] > 0:
+        # find empty position they can fill to win, it is an optimal action
+        p, r, c = idx[0]
+        action = find_empty(state, p, r, c)
+        return action
+    return None
 
 def look_ahead(state):
 
@@ -167,10 +180,15 @@ def look_ahead(state):
     idx = np.argwhere((corr[:, gm.EMPTY] == 2) & (corr[:, player] == state.win_size-2))
     for p, r, c in idx:
         match = find_winning_patterns(state, p, r, c)
-        if match is not None and match in state.valid_actions():
+        if match is not None:
+            if match not in state.valid_actions():
+                print(f"match not in valid actions: {match}")
+                return 0, None
             # win in 2 turns
-            score = sign * (magnitude - 2)
-            return score, match
+            need_to_block_opponent = opponent_wins_in_one(state)
+            if need_to_block_opponent is None or need_to_block_opponent == match:
+              score = sign * (magnitude - 2)
+              return score, match
 
     # return 0 to signify no conclusive look-aheads
     return 0, None
@@ -185,7 +203,7 @@ def minimax(state, max_depth, time_limit=None, alpha=-np.inf, beta=np.inf):
     # check fast look-ahead before trying minimax
     score, action = look_ahead(state)
     if score != 0: return score, action
-    
+  
     # have to try minimax, prepare the valid actions
     # should be at least one valid action if this code is reached
     actions = state.valid_actions()
@@ -368,6 +386,61 @@ if __name__ == "__main__":
             # win in 2 turns
             score = sign * (magnitude - 2)
             
+            print(f"score: {score}, match: {match}")
+
+    # ================================================
+    # === Test diagonal with 1 space and 2 spaces ===
+    # ================================================
+    # print 10 newlines
+    print("\n"*10)
+
+    state = gm.GomokuState.blank(15, 5)
+    state = state.play_seq([(4,0), (6,2), (14,0), (7,3), (0,14), (8,4), (14,14)])
+    corr = state.corr
+    player = state.current_player()
+    assert player == gm.MIN
+    
+    sign = +1 if player == gm.MAX else -1
+    magnitude = state.board[gm.EMPTY].sum()
+    print(state)
+    idx = np.argwhere((corr[:, gm.EMPTY] == 2) & (corr[:, player] == state.win_size-2))
+    assert len(idx) != 0
+    print(idx)
+    for p, r, c in idx:
+        print(p, r, c)
+        match = find_winning_patterns(state, p, r, c)
+        if match is not None:
+            # win in 2 turns
+            score = sign * (magnitude - 2)
+            assert match in state.valid_actions()
+            print(f"score: {score}, match: {match}")
+    print("no fails")
+
+    # ================================================
+    # === Test anti-diagonal with 1 space and 2 spaces ===
+    # ================================================
+    # print 10 newlines
+    print("\n"*10)
+
+    state = gm.GomokuState.blank(15, 5)
+    state = state.play_seq([(11,0), (9,2), (14,0), (8,3), (0,14), (7,4), (14,14)])
+    corr = state.corr
+    player = state.current_player()
+    assert player == gm.MIN
+    
+    sign = +1 if player == gm.MAX else -1
+    magnitude = state.board[gm.EMPTY].sum()
+    print(state)
+    idx = np.argwhere((corr[:, gm.EMPTY] == 2) & (corr[:, player] == state.win_size-2))
+    assert len(idx) != 0
+    print(idx)
+    for p, r, c in idx:
+        print(p, r, c)
+        match = find_winning_patterns(state, p, r, c)
+        if match is not None:
+            # win in 2 turns
+            score = sign * (magnitude - 2)
+            assert match in state.valid_actions()
             print(f"score: {score}, match: {match}")
     print("no fails")
 

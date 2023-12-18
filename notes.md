@@ -61,22 +61,41 @@ Considerations:
 
 
 
-check if it's 0XXX0
-
-0XX0X0
-0X0XX0
-
-    if p == 1: # vertical
-        empties = state.board[gm.EMPTY, r:r+state.win_size, c]
-        if empties[0] == 1 and empties[-1] == 1:
-            return (r, c), (r+state.win_size-1, c)
-    if p == 2: # diagonal
-        rng = np.arange(state.win_size)
-        empties = state.board[gm.EMPTY, r + rng, c + rng]
-        if empties[0] == 1 and empties[-1] == 1:
-            return (r, c), (r+state.win_size-1, c+state.win_size-1)
-    if p == 3: # antidiagonal
-        rng = np.arange(state.win_size)
-        empties = state.board[gm.EMPTY, r - rng, c + rng]
-        if empties[0] == 1 and empties[-1] == 1:
-            return (r, c), (r-state.win_size+1, c+state.win_size-1)
+Turn 122: Minimax took 0.072007708000001 seconds
+ooxoxxxoxxo....
+xxoxxoxxoxo....
+ooxooxxoxox....
+xxooxoxxxox....
+ooxxoooxxo.....
+oxooxoxoo......
+xxxoxxoox...o..
+oxxoooox.......
+ooooxxo...x....
+oooxoo.........
+xxxxoxx.o......
+xxxox..x.......
+oxxx..o........
+oxx..o.........
+oooxo..........
+Traceback (most recent call last):
+  File "/Users/matt/Documents/CIS667/GomokuAI/src/compete.py", line 67, in <module>
+    score, runtimes = compete(args.board_size, args.win_size, policies)
+  File "/Users/matt/Documents/CIS667/GomokuAI/src/compete.py", line 28, in compete
+    action = policy(state.copy())
+  File "/Users/matt/Documents/CIS667/GomokuAI/src/policies/submission.py", line 263, in __call__
+    _, action = minimax(state=state, max_depth=i, time_limit=time_limit)
+  File "/Users/matt/Documents/CIS667/GomokuAI/src/policies/submission.py", line 241, in minimax
+    utility, _ = minimax(child, max_depth-1, time_limit=time_limit, alpha=alpha, beta=beta)
+  File "/Users/matt/Documents/CIS667/GomokuAI/src/policies/submission.py", line 230, in minimax
+    utility, _ = minimax(child, max_depth-1, time_limit=time_limit, alpha=alpha, beta=beta)
+  File "/Users/matt/Documents/CIS667/GomokuAI/src/policies/submission.py", line 241, in minimax
+    utility, _ = minimax(child, max_depth-1, time_limit=time_limit, alpha=alpha, beta=beta)
+  File "/Users/matt/Documents/CIS667/GomokuAI/src/policies/submission.py", line 204, in minimax
+    score, action = look_ahead(state)
+  File "/Users/matt/Documents/CIS667/GomokuAI/src/policies/submission.py", line 182, in look_ahead
+    match = find_winning_patterns(state, p, r, c)
+  File "/Users/matt/Documents/CIS667/GomokuAI/src/policies/submission.py", line 111, in find_winning_patterns
+    position, lhs = get_position_list(lhs, rhs, base)
+  File "/Users/matt/Documents/CIS667/GomokuAI/src/policies/submission.py", line 67, in get_position_list
+    if base[l] != 1: break
+IndexError: index 1 is out of bounds for axis 0 with size 1
