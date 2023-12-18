@@ -66,17 +66,17 @@ check if it's 0XXX0
 0XX0X0
 0X0XX0
 
-    if p == 0: # horizontal
-        return r, c + np.argwhere(state.board[gm.EMPTY, r, c:c+state.win_size])
     if p == 1: # vertical
-        return r + np.argwhere(state.board[gm.EMPTY, r:r+state.win_size, c]), c
+        empties = state.board[gm.EMPTY, r:r+state.win_size, c]
+        if empties[0] == 1 and empties[-1] == 1:
+            return (r, c), (r+state.win_size-1, c)
     if p == 2: # diagonal
         rng = np.arange(state.win_size)
-        offset = np.argwhere(state.board[gm.EMPTY, r + rng, c + rng])
-        return r + offset, c + offset
+        empties = state.board[gm.EMPTY, r + rng, c + rng]
+        if empties[0] == 1 and empties[-1] == 1:
+            return (r, c), (r+state.win_size-1, c+state.win_size-1)
     if p == 3: # antidiagonal
         rng = np.arange(state.win_size)
-        offset = np.argwhere(state.board[gm.EMPTY, r - rng, c + rng])
-        return r - offset, c + offset
-    # None indicates no empty found
-    return None
+        empties = state.board[gm.EMPTY, r - rng, c + rng]
+        if empties[0] == 1 and empties[-1] == 1:
+            return (r, c), (r-state.win_size+1, c+state.win_size-1)
