@@ -7,9 +7,7 @@ __call__ must return a valid action
 # ====================================
 
 import itertools as it
-import random
 import numpy as np
-from scipy.signal import correlate
 import gomoku as gm
 import time
 from policies.lookup import lookup
@@ -137,11 +135,14 @@ def opponent_wins_in_one(state):
     corr = state.corr
     # check if opponent is one move away to a win
     idx = np.argwhere((corr[:, gm.EMPTY] == 1) & (corr[:, opponent] == state.win_size-1))
-    if idx.shape[0] > 0:
-        # find empty position they can fill to win, it is an optimal action
-        p, r, c = idx[0]
-        action = find_empty(state, p, r, c)
+    actions = []
+    for p, r, c in idx:
+        actions.append(find_empty(state, p, r, c))
+    if len(set(actions)) == 1:
+        action = actions[0]
         return action
+    elif len(set(actions)) > 1:
+        return False
     return None
 
 def look_ahead(state):
@@ -258,7 +259,7 @@ class Submission:
         # run iterative deepening minimax search
         for i in range(0, self.max_depth+1):
             if i <= 4: _, action = minimax(state=state, max_depth=i, time_limit=None)
-            else: 
+            else:
                 if time.time() > time_limit: break
                 _, action = minimax(state=state, max_depth=i, time_limit=time_limit)
         return action
